@@ -1,19 +1,18 @@
-import { Form, Link, redirect, useNavigation } from "react-router";
+// app/auth/signup.tsx
 
+import { Form, Link, redirect, useNavigation } from "react-router";
 import { validateEmail, validatePassword } from "~/validation";
 import { createClient } from "~/supabase.server";
 import { commitSession, getSession, setSuccessMessage } from "~/session.server";
-import type { Route } from "./+types/signup";
-
+import clientPromise from "~/db"; // This should correctly import db.ts
 
 interface FieldError {
   email?: string;
   password?: string;
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request }: { request: Request }) {
   let session = await getSession(request.headers.get("Cookie"));
-
   let formData = await request.formData();
   let email = String(formData.get("email"));
   let password = String(formData.get("password"));
@@ -23,24 +22,37 @@ export async function action({ request }: Route.ActionArgs) {
     password: validatePassword(password),
   };
 
-  // Return errors if any
-
   if (Object.values(fieldErrors).some(Boolean)) {
     return { fieldErrors };
   }
 
-  // Sign up user
-
   let { supabase, headers } = createClient(request);
+
+  // Sign up the user with Supabase
   let { data: userData, error } = await supabase.auth.signUp({
     email,
     password,
   });
+
   if (error) {
     throw error;
   }
 
-  if (userData) {
+  if (userData.user) {
+    // Save user data in MongoDB
+    try {
+      const client = await clientPromise;
+      const db = client.db("your-database-name");
+      await db.collection("users").insertOne({
+        id: userData.user.id,
+        email: userData.user.email,
+        created_at: new Date(),
+      });
+    } catch (dbError) {
+      console.error("Failed to save user in MongoDB:", dbError);
+      throw new Response("Failed to save user data", { status: 500 });
+    }
+
     setSuccessMessage(session, "Check your email to verify your account!");
     let allHeaders = {
       ...Object.fromEntries(headers.entries()),
@@ -54,7 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
   return null;
 }
 
-export default function Signup({ actionData }: Route.ComponentProps) {
+export default function Signup({ actionData }: { actionData: any }) {
   let navigation = useNavigation();
   let isSubmitting = navigation.state === "submitting";
 
@@ -111,7 +123,12 @@ export default function Signup({ actionData }: Route.ComponentProps) {
           </button>
         </Form>
 
-        <Link to="/LOGIN" className=" mt-4 text-gray-300 inline-block hoover:underline"> Have an account ? login instead</Link>
+        <Link
+          to="/LOGIN"
+          className="mt-4 text-gray-300 inline-block hover:underline"
+        >
+          Have an account? Login instead
+        </Link>
       </div>
       <div>
         <img
