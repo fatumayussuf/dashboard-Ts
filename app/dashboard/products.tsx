@@ -43,11 +43,12 @@ let ProductCard: React.FC<Product> = ({
       <p className="text-lg font-semibold mt-2 text-gray-400">Ksh {price}</p>
       <p className="text-gray-600 mt-1">{quantity}</p>
       <Link
-        to={_id}
-        className="inline-block mt-6 bg-blue-500 text-white py-1 px-7 rounded-md hover:bg-blue-900 transition ease-in-out duration-500"
-      >
-        Edit
-      </Link>
+  to={`/dashboard/products/${_id}/edit`}
+  className="inline-block mt-6 bg-blue-500 text-white py-1 px-7 rounded-md hover:bg-blue-900 transition ease-in-out duration-500"
+>
+  Edit
+</Link>
+
     </div>
   );
 };
